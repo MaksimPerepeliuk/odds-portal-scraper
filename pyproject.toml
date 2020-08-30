@@ -8,6 +8,7 @@ authors = ["Max <maksim.perepelyuk@mail.ru>"]
 python = "^3.8"
 requests = "^2.24.0"
 selenium = "^3.141.0"
+tqdm = "^4.48.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

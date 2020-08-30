@@ -4,6 +4,27 @@ from selenium.webdriver.common.action_chains import ActionChains
 import time
 import csv
 import os
+from multiprocessing import Pool
+from functools import partial
+from odds_portal_scraper.logs.loggers import app_logger
+from tqdm import tqdm
+
+
+def chunk(list_, size):
+    result = []
+    chunk = []
+    for elem in list_:
+        if len(chunk) == size:
+            result.append(chunk)
+            chunk = []
+        chunk.append(elem)
+    result.append(chunk)
+    return result
+
+
+def write_text_file(text, filename):
+    with open(filename, 'a') as f:
+        f.write(f'{text}, ')
 
 
 def get_driver():
@@ -28,26 +49,34 @@ def write_csv(filename, data, order):
 def extract_info(info):
     return {
         'date': '{} {}'.format(info[0], info[1][:-1]),
-        'hour': '{}'.format(info[2]),
         'odds': float(info[3])
     }
 
 
-def get_hide_info(elem, driver, type_):
+def get_hide_info(elem, driver, type_, url):
     ActionChains(driver).move_to_element(elem).perform()
     span = driver.find_element_by_css_selector('#tooltiptext')
     info = span.get_attribute('innerText').split('\n')
-    close_info = extract_info(info[0].split(' '))
-    open_info = extract_info(info[3].split(' '))
+    try:
+        close_odds = float(info[0].split(' ')[3])
+        open_odds = float(info[3].split(' ')[3])
+        # app_logger.info(f'NORM INFO {info} url = {url}')
+    except:
+        # app_logger.exception(f'HIDE INFO ERR info = {info} split = {info[1].split(" ")} url = {url}')
+        close_odds = float(info[1].split(' ')[3])
+        open_odds = float(info[1].split(' ')[3])
+        
     return {
-        type_+'_open_odds': open_info['odds'],
-        type_+'_close_odds': close_info['odds']
+        type_+'_open_odds': open_odds,
+        type_+'_close_odds': close_odds
     }
+       
 
 
 def get_odds_info(url):
     driver = get_driver()
     driver.get(url)
+    app_logger.info(f'Start parsing odds in url {url}')
     time.sleep(0.5)
     championate_info = driver.find_elements_by_css_selector('div#breadcrumb a')
     country = championate_info[2].text
@@ -57,17 +86,19 @@ def get_odds_info(url):
     start_date = driver.find_element_by_css_selector('p.date').text
     final_result = driver.find_element_by_css_selector('p.result strong').text
     trs = driver.find_elements_by_css_selector('tr.lo')
+    data = []
     for tr in trs:
         tds = tr.find_elements_by_css_selector('td')
         book_name = tds[0].find_element_by_css_selector('a.name').text
-        if book_name == 'Marathonbet.ru':
+        best_bookms = ['Pinnacle', 'Marathonbet', 'Asianodds']
+        if book_name in best_bookms:
             home_win_elem = tds[1].find_element_by_css_selector('div')
             draw_elem = tds[2].find_element_by_css_selector('div')
             away_win_elem = tds[3].find_element_by_css_selector('div')
-            open_close_home = get_hide_info(home_win_elem, driver, 'home')
-            open_close_draw = get_hide_info(draw_elem, driver, 'draw')
-            open_close_away = get_hide_info(away_win_elem, driver, 'away')
-            data = {
+            open_close_home = get_hide_info(home_win_elem, driver, 'home', url)
+            open_close_draw = get_hide_info(draw_elem, driver, 'draw', url)
+            open_close_away = get_hide_info(away_win_elem, driver, 'away', url)
+            odds_info = {
                 'country': country,
                 'championate': championate,
                 'title': event_title,
@@ -78,15 +109,47 @@ def get_odds_info(url):
                 **open_close_draw,
                 **open_close_away
             }
-            write_csv('odds_info.csv', data, data.keys())
+            data.append(odds_info)
+    driver.quit()
+    if len(data) == 0:
+        raise Exception(f'RECEIVED EMPTY DATA ON URL {url}')
+    return data
+        
+        
 
 
+def run_parse(url):
+    try:
+        data = get_odds_info(url)
+        for odds in data:
+            write_csv('odds_info1.csv', odds, odds.keys())
+    except Exception:
+        app_logger.exception(f'ERROR RUN PARSE ON URL {url}')
+        write_text_file(url, 'odds_portal_scraper/logs/odds_failed_urls.txt')
 
-# urls = [
-#     'https://www.oddsportal.com/soccer/england/premier-league-2019-2020/liverpool-chelsea-ttobio9E/',
-#     'https://www.oddsportal.com/soccer/england/premier-league-2019-2020/manchester-united-west-ham-z3p2j5OK/',
-#     'https://www.oddsportal.com/soccer/england/premier-league-2019-2020/everton-bournemouth-Qiap3r8Q/'
-# ]
 
-# for url in urls:
-#     get_odds_info(url)
+def run_multi_parse(urls, n_proc):
+    app_logger.info(f'Start multiprocess function urls - {len(urls)} num processes - {n_proc}')
+    pool = Pool(n_proc)
+    pool.map(run_parse, urls)
+    pool.close()
+    pool.join()
+
+
+def main(n_proc):
+    urls_file = open('odds_portal_scraper/urls/events_urls_combine1.txt')
+    urls = urls_file.read().split(', ')
+    urls_file.close()
+    urls_chunks = chunk(urls, n_proc * 3)
+    for urls_chunk in tqdm(urls_chunks):
+        run_multi_parse(urls_chunk, n_proc)
+
+
+if __name__ == '__main__':
+    main(10)
+
+# if __name__ == "__main__":
+#     with open('odds_portal_scraper/urls/events_urls_combine1.txt') as f:
+#         urls = f.read().split(', ')
+#         print(len(list(filter(None, urls))))
+    
