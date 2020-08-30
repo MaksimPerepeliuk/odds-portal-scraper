@@ -49,6 +49,9 @@ def get_odds_info(url):
     driver = get_driver()
     driver.get(url)
     time.sleep(0.5)
+    championate_info = driver.find_elements_by_css_selector('div#breadcrumb a')
+    country = championate_info[2].text
+    championate = championate_info[3].text
     event_title = driver.find_element_by_css_selector(
         'div#col-content h1').text
     start_date = driver.find_element_by_css_selector('p.date').text
@@ -65,6 +68,8 @@ def get_odds_info(url):
             open_close_draw = get_hide_info(draw_elem, driver, 'draw')
             open_close_away = get_hide_info(away_win_elem, driver, 'away')
             data = {
+                'country': country,
+                'championate': championate,
                 'title': event_title,
                 'date': start_date,
                 'result': final_result,
@@ -77,4 +82,11 @@ def get_odds_info(url):
 
 
 
-get_odds_info('https://www.oddsportal.com/soccer/england/premier-league-2019-2020/everton-bournemouth-Qiap3r8Q/')
+# urls = [
+#     'https://www.oddsportal.com/soccer/england/premier-league-2019-2020/liverpool-chelsea-ttobio9E/',
+#     'https://www.oddsportal.com/soccer/england/premier-league-2019-2020/manchester-united-west-ham-z3p2j5OK/',
+#     'https://www.oddsportal.com/soccer/england/premier-league-2019-2020/everton-bournemouth-Qiap3r8Q/'
+# ]
+
+# for url in urls:
+#     get_odds_info(url)
