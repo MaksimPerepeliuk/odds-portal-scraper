@@ -1,5 +1,6 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+# from selenium import webdriver
+# from selenium.webdriver.chrome.options import Options
+from odds_portal_scraper.driver import get_chromedriver
 from selenium.webdriver.common.action_chains import ActionChains
 import time
 import csv
@@ -27,14 +28,14 @@ def write_text_file(text, filename):
         f.write(f'{text}, ')
 
 
-def get_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--window-size=1920x1080")
-    chromedriver_path = './chromedriver'
-    driver = webdriver.Chrome(options=chrome_options,
-                              executable_path=chromedriver_path)
-    return driver
+# def get_driver():
+#     chrome_options = Options()
+#     chrome_options.add_argument("--headless")
+#     chrome_options.add_argument("--window-size=1920x1080")
+#     chromedriver_path = './chromedriver'
+#     driver = webdriver.Chrome(options=chrome_options,
+#                               executable_path=chromedriver_path)
+#     return driver
 
 
 def write_csv(filename, data, order):
@@ -74,7 +75,7 @@ def get_hide_info(elem, driver, type_, url):
 
 
 def get_odds_info(url):
-    driver = get_driver()
+    driver = get_chromedriver(use_proxy=True)
     driver.get(url)
     app_logger.info(f'Start parsing odds in url {url}')
     time.sleep(0.5)
@@ -122,7 +123,7 @@ def run_parse(url):
     try:
         data = get_odds_info(url)
         for odds in data:
-            write_csv('odds_info1.csv', odds, odds.keys())
+            write_csv('odds_infoTEST.csv', odds, odds.keys()) #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     except Exception:
         app_logger.exception(f'ERROR RUN PARSE ON URL {url}')
         write_text_file(url, 'odds_portal_scraper/logs/odds_failed_urls.txt')
@@ -138,18 +139,12 @@ def run_multi_parse(urls, n_proc):
 
 def main(n_proc):
     urls_file = open('odds_portal_scraper/urls/events_urls_combine1.txt')
-    urls = urls_file.read().split(', ')
+    urls = urls_file.read().split(', ')[4830:10000]
     urls_file.close()
-    urls_chunks = chunk(urls, n_proc * 3)
+    urls_chunks = chunk(urls, n_proc)
     for urls_chunk in tqdm(urls_chunks):
         run_multi_parse(urls_chunk, n_proc)
 
 
 if __name__ == '__main__':
-    main(10)
-
-# if __name__ == "__main__":
-#     with open('odds_portal_scraper/urls/events_urls_combine1.txt') as f:
-#         urls = f.read().split(', ')
-#         print(len(list(filter(None, urls))))
-    
+    main(2)
