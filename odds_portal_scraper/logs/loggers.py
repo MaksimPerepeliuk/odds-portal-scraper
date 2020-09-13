@@ -5,3 +5,4 @@ from odds_portal_scraper.logs.settings import logger_config
 
 logging.config.dictConfig(logger_config)
 app_logger = logging.getLogger('app_logger')
+app2_logger = logging.getLogger('app2_logger')

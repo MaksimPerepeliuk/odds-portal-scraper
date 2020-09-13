@@ -42,6 +42,8 @@ logger_config = {
             'mode': 'a'
         }
     },
+
+
     'loggers': {
         'app_logger': {
             'level': 'DEBUG',
@@ -50,13 +52,12 @@ logger_config = {
                          'error_file_handler',
                          'info_file_handler'],
         },
-        'info_logger': {
-            'level': 'INFO',
-            'handlers': ['info_file_handler'],
-        },
-        'error_logger': {
-            'level': 'ERROR',
-            'handlers': ['console', 'error_file_handler'],
-        },
+        'app2_logger': {
+            'level': 'DEBUG',
+            'propagate': 'no',
+            'handlers': ['debug_file_handler',
+                         'error_file_handler',
+                         'info_file_handler'],
+        }
     },
 }
